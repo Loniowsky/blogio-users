@@ -141,6 +141,11 @@ public class User {
             return this;
         }
 
+        public Builder withNonNegativeReputation(int reputation){
+            this.reputation = Math.max(reputation, 0);
+            return this;
+        }
+
         public User build() {
             return new User(id, firstName, lastName, email, new Bio(birthDate, description, gender), reputation);
         }

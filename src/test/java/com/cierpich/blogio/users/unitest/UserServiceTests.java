@@ -51,13 +51,13 @@ public class UserServiceTests {
         var user = UserBuilderMother.aTypicalUser().withId(id).build();
 
         sut.createUser(user);
-        sut.removeUser(user);
+        sut.deleteUser(id);
 
         assertThatThrownBy(() -> sut.getUser(id)).isInstanceOf(BusinessRuleException.class).hasMessage("User with id " + id + " does not exist");
     }
 
     @Test
-    public void canModifyUser() {
+    public void canUpdateUser() {
         var id = UUID.randomUUID();
         var builder = UserBuilderMother.aTypicalUser();
         var originalUser = builder.withId(id).build();
@@ -115,6 +115,12 @@ public class UserServiceTests {
     public void cannotModifyReputationOfNonExistingUser(){
         var id = UUID.randomUUID();
         assertThatThrownBy(() -> sut.modifyReputation(id, 10)).isInstanceOf(BusinessRuleException.class).hasMessage("User with id " + id + " does not exist");
+    }
+
+    @Test
+    public void cannotDeleteNonExistingUser(){
+        var id = UUID.randomUUID();
+        assertThatThrownBy(() -> sut.deleteUser(id)).isInstanceOf(BusinessRuleException.class).hasMessage("User with id " + id + " does not exist");
     }
 
 }

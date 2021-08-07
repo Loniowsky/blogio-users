@@ -1,8 +1,8 @@
 package com.cierpich.blogio.users.domain.service;
 
-import com.cierpich.blogio.users.domain.port.outgoing.UserRepository;
 import com.cierpich.blogio.users.domain.BusinessRuleException;
 import com.cierpich.blogio.users.domain.entity.User;
+import com.cierpich.blogio.users.domain.port.outgoing.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.text.MessageFormat;
@@ -23,32 +23,38 @@ public class UserService {
         ));
     }
 
-    public void createUser(User user) {
-        userRepository.findByEmail(user.getEmail()).ifPresent(
+    public UUID createUser(User user) {
+        userRepository.findByEmail(user.getEmail()).ifPresentOrElse(
                 (presentUser) -> {
                     throw new BusinessRuleException(MessageFormat.format("User with email {0} already exists", presentUser.getEmail()));
-                }
+                },
+                () -> userRepository.save(user)
         );
 
-        userRepository.save(user);
+        return user.getId();
     }
 
-    public void removeUser(User user) {
-        if (userRepository.findById(user.getId()).isPresent()) {
-            userRepository.delete(user);
-        }
+    public void deleteUser(UUID id) {
+        User toBeDeleted = getUser(id);
+        userRepository.delete(toBeDeleted);
     }
 
     public void updateUser(User user) {
-        if (userRepository.findById(user.getId()).isPresent()) {
-            userRepository.update(user);
-        } else {
-            throw new BusinessRuleException(MessageFormat.format("User with id {0} does not exist", user.getId()));
-        }
+        User actualUser = getUser(user.getId());
+        User toBeSaved = new User.Builder().withEmail(user.getEmail())
+                .withId(user.getId())
+                .withDescription(user.getDescription())
+                .withBirthDate(user.getBirthDate())
+                .withFirstName(user.getFirstName())
+                .withGender(user.getGender())
+                .withLastName(user.getLastName())
+                .withNonNegativeReputation(actualUser.getReputation())
+                .build();
+        userRepository.update(toBeSaved);
     }
 
     public void modifyReputation(UUID userId, int value) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new BusinessRuleException(MessageFormat.format("User with id {0} does not exist", userId)));
+        User user = getUser(userId);
         user.modifyReputationNonNegative(value);
         userRepository.save(user);
     }
