@@ -1,15 +1,21 @@
 package com.cierpich.blogio.users.domain.entity;
 
+
+import org.springframework.data.domain.Persistable;
+
+import javax.persistence.*;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
 
-public class User {
+@Entity
+public class User implements Persistable<UUID> {
 
     private UUID id;
     private String firstName;
     private String lastName;
     private String email;
+    @Transient
     private Bio bio;
     private int reputation;
 
@@ -31,7 +37,8 @@ public class User {
         this.reputation = reputation;
     }
 
-    public User() {
+    protected User(){
+        this.bio = new Bio(null, null, null);
     }
 
     public void modifyReputationNonNegative(int value) {
@@ -47,8 +54,23 @@ public class User {
         reputation = Math.max(reputation, 0);
     }
 
+    @Id
+    @Column(name = "id", length = 16, unique = true, nullable = false)
     public UUID getId() {
         return id;
+    }
+
+    private boolean isNew = true;
+
+    @Override
+    @Transient
+    public boolean isNew() {
+        return isNew;
+    }
+    @PrePersist
+    @PostLoad
+    public void markNotNew(){
+        this.isNew = false;
     }
 
     public String getFirstName() {
@@ -64,19 +86,51 @@ public class User {
     }
 
     public String getDescription() {
-        return bio.getDescription();
+        return bio.description;
     }
 
     public LocalDate getBirthDate() {
-        return bio.getBirthDate();
+        return bio.birthDate;
     }
 
     public Bio.Gender getGender() {
-        return bio.getGender();
+        return bio.gender;
     }
 
     public int getReputation() {
         return reputation;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setDescription(String description) {
+        this.bio = bio.setDescription(description);
+    }
+
+    public void setBirthDate(LocalDate birthDate) {
+        this.bio = bio.setBirthDate(birthDate);
+    }
+
+    public void setGender(Bio.Gender gender) {
+        this.bio = bio.setGender(gender);
+    }
+
+    public void setReputation(int reputation) {
+        this.reputation = reputation;
     }
 
     @Override
@@ -154,9 +208,9 @@ public class User {
 
     public static class Bio {
 
-        private final String description;
-        private final LocalDate birthDate;
-        private final Gender gender;
+        public final String description;
+        public final LocalDate birthDate;
+        public final Gender gender;
 
         public Bio(LocalDate birthDate, String description, Gender gender) {
             this.description = description;
@@ -164,20 +218,20 @@ public class User {
             this.gender = gender;
         }
 
-        public String getDescription() {
-            return description;
-        }
-
-        public LocalDate getBirthDate() {
-            return birthDate;
-        }
-
-        public Gender getGender() {
-            return gender;
-        }
-
         public enum Gender {
             MALE, FEMALE, HIDDEN
+        }
+
+        public Bio setDescription(String description){
+            return new Bio(this.birthDate, description, this.gender);
+        }
+
+        public Bio setBirthDate(LocalDate birthDate){
+            return new Bio(birthDate, this.description, this.gender);
+        }
+
+        public Bio setGender(Gender gender){
+            return new Bio(this.birthDate, this.description, gender);
         }
 
     }

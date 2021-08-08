@@ -5,10 +5,12 @@ import com.cierpich.blogio.users.domain.entity.User;
 import com.cierpich.blogio.users.domain.port.outgoing.UserRepository;
 import org.springframework.stereotype.Service;
 
+import javax.transaction.Transactional;
 import java.text.MessageFormat;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class UserService {
 
     private final UserRepository userRepository;
@@ -24,12 +26,13 @@ public class UserService {
     }
 
     public UUID createUser(User user) {
-        userRepository.findByEmail(user.getEmail()).ifPresentOrElse(
-                (presentUser) -> {
-                    throw new BusinessRuleException(MessageFormat.format("User with email {0} already exists", presentUser.getEmail()));
-                },
-                () -> userRepository.save(user)
-        );
+        userRepository.findByEmail(user.getEmail())
+                .ifPresentOrElse(
+                        (presentUser) -> {
+                            throw new BusinessRuleException(MessageFormat.format("User with email {0} already exists", presentUser.getEmail()));
+                        },
+                        () -> userRepository.save(user)
+                );
 
         return user.getId();
     }
@@ -41,16 +44,9 @@ public class UserService {
 
     public void updateUser(User user) {
         User actualUser = getUser(user.getId());
-        User toBeSaved = new User.Builder().withEmail(user.getEmail())
-                .withId(user.getId())
-                .withDescription(user.getDescription())
-                .withBirthDate(user.getBirthDate())
-                .withFirstName(user.getFirstName())
-                .withGender(user.getGender())
-                .withLastName(user.getLastName())
-                .withNonNegativeReputation(actualUser.getReputation())
-                .build();
-        userRepository.update(toBeSaved);
+        user.setReputation(actualUser.getReputation());
+        user.markNotNew();
+        userRepository.update(user);
     }
 
     public void modifyReputation(UUID userId, int value) {
