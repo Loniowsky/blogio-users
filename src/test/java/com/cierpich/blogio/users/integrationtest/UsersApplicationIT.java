@@ -1,8 +1,10 @@
 package com.cierpich.blogio.users.integrationtest;
 
 
+import com.cierpich.blogio.users.data.JpaUserRepository;
 import com.cierpich.blogio.users.presentation.response.DeleteUserResponse;
 import com.cierpich.blogio.users.presentation.response.ModifyReputationResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,13 +17,13 @@ import org.springframework.web.client.RestTemplate;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.text.MessageFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// TODO: Add separation for tests e.g.: Transaction for each test
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -33,7 +35,15 @@ class UsersApplicationIT extends IntegrationTestWithDatabase {
     @Autowired
     private TestRestTemplate testRestTemplate;
 
+    @Autowired
+    private JpaUserRepository userRepository;
+
     private final Supplier<String> endpoint = () -> "http://localhost:" + port + "/users";
+
+    @BeforeEach
+    void cleanUserTable(){
+        userRepository.deleteAll();
+    }
 
     @Test
     public void canHandleCreateUserRequest() {
@@ -73,7 +83,7 @@ class UsersApplicationIT extends IntegrationTestWithDatabase {
         //WA: Cannot call PATCH method via SimpleClientHttpRequestFactory see: https://bugs.openjdk.java.net/browse/JDK-7016595
         RestTemplate restTemplate = new RestTemplateBuilder().requestFactory(HttpComponentsClientHttpRequestFactory.class).build();
         //ENDOF WA
-        UUID id = testRestTemplate.postForEntity(endpoint.get(), new HttpEntity<>(new UserRequestBodyBuilder().withEmail("another@email.com").build(), applicationJsonHeaders()), UUID.class).getBody();
+        UUID id = testRestTemplate.postForEntity(endpoint.get(), new HttpEntity<>(createUserRequestBody(), applicationJsonHeaders()), UUID.class).getBody();
         assertThat(id).isNotNull();
 
         restTemplate.patchForObject(endpoint.get()+"/"+id+"/reputation", new HttpEntity<>("{\"value\":10}", applicationJsonHeaders()), ModifyReputationResponse.class);
@@ -85,7 +95,7 @@ class UsersApplicationIT extends IntegrationTestWithDatabase {
 
     @Test
     public void canUpdateUser(){
-        UUID id = testRestTemplate.postForEntity(endpoint.get(), new HttpEntity<>(new UserRequestBodyBuilder().withEmail("yetAnotherEmail@email.com").build(), applicationJsonHeaders()), UUID.class).getBody();
+        UUID id = testRestTemplate.postForEntity(endpoint.get(), new HttpEntity<>(createUserRequestBody(), applicationJsonHeaders()), UUID.class).getBody();
 
         testRestTemplate.put(endpoint.get()+"/"+id, new HttpEntity<>(new UserRequestBodyBuilder().withEmail("changedEmail@email.com").withGender("FEMALE").build(), applicationJsonHeaders()));
 
@@ -94,6 +104,18 @@ class UsersApplicationIT extends IntegrationTestWithDatabase {
         assertThat(modifiedUser).isNotNull();
         assertThat(modifiedUser.get("email")).isEqualTo("changedEmail@email.com");
         assertThat(modifiedUser.get("gender")).isEqualTo("FEMALE");
+    }
+
+    @Test
+    public void canProperlyReportFieldErrors() {
+
+        ResponseEntity<Map> result = testRestTemplate.postForEntity(endpoint.get(), new HttpEntity<>(new UserRequestBodyBuilder().withEmail("notValidEmail").withFirstName("123").build(), applicationJsonHeaders()), Map.class);
+        Map<String, List<String>> fieldErrorMessages = result.getBody();
+
+        assertThat(fieldErrorMessages).isNotNull();
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldErrorMessages.get("email")).containsExactlyInAnyOrder("Invalid email format.");
+        assertThat((List)fieldErrorMessages.get("firstName")).containsExactlyInAnyOrder("Does not contain alphabetical characters only.");
     }
 
 
