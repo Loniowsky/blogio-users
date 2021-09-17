@@ -5,9 +5,9 @@ import com.cierpich.blogio.users.domain.service.UserService;
 import com.cierpich.blogio.users.presentation.request.CreateOrUpdateUserRequest;
 import com.cierpich.blogio.users.presentation.request.ModifyReputationRequest;
 import com.cierpich.blogio.users.presentation.response.DeleteUserResponse;
+import com.cierpich.blogio.users.presentation.response.GetUserResponse;
 import com.cierpich.blogio.users.presentation.response.ModifyReputationResponse;
 import com.cierpich.blogio.users.presentation.response.UpdateUserReponse;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -29,8 +29,8 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public User getUser(@PathVariable UUID id){
-        return userService.getUser(id);
+    public GetUserResponse getUser(@PathVariable UUID id){
+        return GetUserResponse.ofUser(userService.getUser(id));
     }
 
     @DeleteMapping("/{id}")

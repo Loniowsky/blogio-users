@@ -11,11 +11,13 @@ import java.util.UUID;
 @Entity
 public class User implements Persistable<UUID> {
 
+    @Id
+    @Column(name = "id", length = 16, unique = true, nullable = false)
     private UUID id;
     private String firstName;
     private String lastName;
     private String email;
-    @Transient
+    @Embedded
     private Bio bio;
     private int reputation;
 
@@ -37,10 +39,6 @@ public class User implements Persistable<UUID> {
         this.reputation = reputation;
     }
 
-    protected User(){
-        this.bio = new Bio(null, null, null);
-    }
-
     public void modifyReputationNonNegative(int value) {
         modifyReputation(value);
         forceNonNegativeReputation();
@@ -54,23 +52,8 @@ public class User implements Persistable<UUID> {
         reputation = Math.max(reputation, 0);
     }
 
-    @Id
-    @Column(name = "id", length = 16, unique = true, nullable = false)
     public UUID getId() {
         return id;
-    }
-
-    private boolean isNew = true;
-
-    @Override
-    @Transient
-    public boolean isNew() {
-        return isNew;
-    }
-    @PrePersist
-    @PostLoad
-    public void markNotNew(){
-        this.isNew = false;
     }
 
     public String getFirstName() {
@@ -101,37 +84,6 @@ public class User implements Persistable<UUID> {
         return reputation;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public void setDescription(String description) {
-        this.bio = bio.setDescription(description);
-    }
-
-    public void setBirthDate(LocalDate birthDate) {
-        this.bio = bio.setBirthDate(birthDate);
-    }
-
-    public void setGender(Bio.Gender gender) {
-        this.bio = bio.setGender(gender);
-    }
-
-    public void setReputation(int reputation) {
-        this.reputation = reputation;
-    }
 
     @Override
     public boolean equals(Object object) {
@@ -206,6 +158,7 @@ public class User implements Persistable<UUID> {
 
     }
 
+    @Embeddable
     public static class Bio {
 
         public final String description;
@@ -222,17 +175,30 @@ public class User implements Persistable<UUID> {
             MALE, FEMALE, HIDDEN
         }
 
-        public Bio setDescription(String description){
-            return new Bio(this.birthDate, description, this.gender);
+        // Only for JPA
+        protected Bio(){
+            description=null;
+            birthDate=null;
+            gender=null;
         }
 
-        public Bio setBirthDate(LocalDate birthDate){
-            return new Bio(birthDate, this.description, this.gender);
-        }
+    }
 
-        public Bio setGender(Gender gender){
-            return new Bio(this.birthDate, this.description, gender);
-        }
+    // Only for JPA
+    protected User(){
+        this.bio = new Bio();
+    }
 
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+    @PrePersist
+    @PostLoad
+    public void markNotNew(){
+        this.isNew = false;
     }
 }

@@ -44,7 +44,7 @@ public class UserService {
 
     public void updateUser(User user) {
         User actualUser = getUser(user.getId());
-        user.setReputation(actualUser.getReputation());
+        user.modifyReputationNonNegative(actualUser.getReputation());
         user.markNotNew();
         userRepository.update(user);
     }
